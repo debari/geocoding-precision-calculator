@@ -1,0 +1,70 @@
+<html>
+
+<head>
+    <title>位置情報をジオコーディングとかする奴</title>
+    <style type="text/css">
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100%;
+        }
+        .success {
+            position: fixed;
+            top: 30px;
+            right: 10px;
+            background: #FFFFFF;
+            z-index: 100;
+        }
+    </style>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?callback=initMap">
+    </script>
+    <script>
+        var initMap = function() {
+            var map = new google.maps.Map(document.getElementById('map'), {
+                center: {
+                    lat: {{place.lat}},
+                    lng: {{place.lng}}
+                },
+                zoom: 18
+            });
+            var place = {
+                lat: {{place.lat}},
+                lng: {{place.lng}}
+            };
+            var coded = {
+                lat: {{coded.lat}},
+                lng: {{coded.lng}}
+            }
+            var marker1 = new google.maps.Marker({
+                position: place,
+                map: map
+            });
+            var marker2 = new google.maps.Marker({
+                position: coded,
+                map: map
+            });
+        };
+    </script>
+</head>
+
+<body>
+    <div class="success">
+        <dl>lat</dl>
+        <dd>{{place.lat}}</dd>
+        <dl>lng</dl>
+        <dd>{{place.lng}}</dd>
+        <dl>lat(coded)</dl>
+        <dd>{{coded.lat}}</dd>
+        <dl>lng(coded)</dl>
+        <dd>{{coded.lng}}</dd>
+        <dl>住所</dl>
+        <dd>{{coded.address}}</dd>
+    </div>
+    <div id="map"></div>
+</body>
+
+</html>

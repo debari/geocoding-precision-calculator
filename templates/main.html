@@ -1,0 +1,49 @@
+<html>
+<head>
+<title>位置情報をジオコーディングとかする奴</title>
+<script>
+window.onload = function(){
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            successCallback, errorCallback, {enableHighAccuracy:true, timeout:6000, maximumAge:600000}
+        );
+    } else {
+        errorCallback()
+    }
+};
+function successCallback(position){
+    var loading = document.getElementsByClassName('loading')[0];
+    loading.style.display = 'none';
+    var success = document.getElementsByClassName('success')[0];
+    success.style.display = 'inline';
+    var lat = document.getElementById('lat');
+    lat.innerHTML = position.coords.latitude;
+    var lng = document.getElementById('lng');
+    lng.innerHTML = position.coords.longitude;
+    document.form.lat.value = position.coords.latitude;
+    document.form.lng.value = position.coords.longitude;
+}
+function errorCallback(){
+    var loading = document.getElementsByClassName('loading')[0];
+    loading.style.display = 'none';
+    var error = document.getElementsByClassName('error')[0];
+    error.style.display = 'inline';
+}
+</script>
+</head>
+<body>
+    <p class="loading">位置情報取ってます</p>
+    <div class="success" style="display:none">
+        <dl>lat</dl><dd id='lat'></dd>
+        <dl>lng</dl><dd id='lng'></dd>
+        <form name="form" action="/" method="POST">
+            <input type="hidden" name="lat">
+            <input type="hidden" name="lng">
+            <input type="submit" >
+        </form>
+    </div>
+    <p class="error" style="display:none">
+        位置情報取れませんでした
+    </p>
+</body>
+</html>
