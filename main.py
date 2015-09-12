@@ -125,22 +125,22 @@ class MainHandler(webapp2.RequestHandler):
         lng = self.request.get('lng')
 
         place = Place.create_instance(lat=lat, lng=lng)
-        geocoder = GeoCoder(lat, lng)
-        logging.info(geocoder.as_qs())
-        result = GeoCodingResult(geocoder)
         future = place.put_async(use_memcache=True)
+        geocoder = GeoCoder(lat, lng)
+        result = GeoCodingResult(geocoder)
 
         key = future.get_result()
         res = result.as_dict()
         res['origin'] = key
         coded = GeoCodedPlace.create_instance(**res)
         future = coded.put_async(use_memcache=True)
-        future.get_result()
         context = {
             'place': place,
             'coded': coded
         }
         self.render_response('templates/location.html', context)
+        future.get_result()
+
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler)
