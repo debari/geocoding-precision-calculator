@@ -1,6 +1,6 @@
 # coding: utf8
 from google.appengine.ext import ndb
-import logging
+# import logging
 
 
 class Greeting(ndb.Model):
