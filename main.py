@@ -33,12 +33,9 @@ from models import (
     GeoCodedPlace,
 )
 
-from local_settings import (
-    PROJECT_NUMBER,
-    DATASET_ID,
-    TABLE_ID,
-)
-
+PROJECT_ID = 'geocoding-precision-calculator'
+DATASET_ID = 'places'
+TABLE_ID = 'places'
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     extensions=['jinja2.ext.autoescape'],
@@ -181,7 +178,7 @@ class MainHandler(webapp2.RequestHandler):
             }
             bigquery = bq_auth()
             response = bigquery.tabledata().insertAll(
-                projectId=PROJECT_NUMBER,
+                projectId=PROJECT_ID,
                 datasetId=DATASET_ID,
                 tableId=TABLE_ID,
                 body=insert_data
