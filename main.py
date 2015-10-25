@@ -14,12 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import csv
+import datetime
+import uuid
 import webapp2
 import jinja2
 import os
 import logging
 import json
+import httplib2
+from apiclient.discovery import build
 
+from oauth2client.appengine import AppAssertionCredentials
 from google.appengine.api import urlfetch
 
 from models import (
@@ -27,10 +33,25 @@ from models import (
     GeoCodedPlace,
 )
 
+from local_settings import (
+    PROJECT_NUMBER,
+    DATASET_ID,
+    TABLE_ID,
+)
+
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
+
+SCOPE = 'https://www.googleapis.com/auth/bigquery'
+
+
+def bq_auth():
+    credentials = AppAssertionCredentials(scope=SCOPE)
+    http = credentials.authorize(httplib2.Http())
+    bigquery = build('bigquery', 'v2', http=http)
+    return bigquery
 
 
 class GeoCoder(object):
@@ -72,6 +93,7 @@ class GeoCoder(object):
 
 
 class GeoCodingResult(object):
+
     def __init__(self, geocoder):
         self.geocoder = geocoder
 
@@ -110,8 +132,18 @@ class GeoCodingResult(object):
             'json': self.json(),
         }
 
+    def as_bq(self):
+        return {
+            'address': self.address(),
+            'lat': self.lat(),
+            'lng': self.lng(),
+            'lat_origin': self.geocoder.lat,
+            'lng_origin': self.geocoder.lng,
+        }
+
 
 class MainHandler(webapp2.RequestHandler):
+
     def render_response(self, _template, context):
         template = JINJA_ENVIRONMENT.get_template(_template)
         self.response.write(template.render(**context))
@@ -128,16 +160,29 @@ class MainHandler(webapp2.RequestHandler):
         future = place.put_async(use_memcache=True)
         geocoder = GeoCoder(lat, lng)
         result = GeoCodingResult(geocoder)
-
-        key = future.get_result()
         res = result.as_dict()
-        res['origin'] = key
+        res['origin'] = future.get_result()
         coded = GeoCodedPlace.create_instance(**res)
         future = coded.put_async(use_memcache=True)
         context = {
             'place': place,
             'coded': coded
         }
+
+        now = datetime.datetime.now()
+        # created = now.strftime("%Y-%m-%d %H:%M:%S")
+        insert_id = now.strftime("%Y%m%d%H%M%S") + uuid.uuid4().hex
+        insert_data = {
+            'kind': 'bigquery#tableDataInsertAllRequest',
+            'rows': [{'insertId': insert_id, 'json': result.as_bq()}]
+        }
+        bigquery = bq_auth()
+        response = bigquery.tabledata().insertAll(
+            projectId=PROJECT_NUMBER,
+            datasetId=DATASET_ID,
+            tableId=TABLE_ID,
+            body=insert_data
+        ).execute()
         self.render_response('templates/location.html', context)
         future.get_result()
 
