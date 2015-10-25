@@ -160,9 +160,11 @@ class MainHandler(webapp2.RequestHandler):
         future = place.put_async(use_memcache=True)
         geocoder = GeoCoder(lat, lng)
         result = GeoCodingResult(geocoder)
+
         res = result.as_dict()
         res['origin'] = future.get_result()
         coded = GeoCodedPlace.create_instance(**res)
+
         future = coded.put_async(use_memcache=True)
         context = {
             'place': place,
@@ -171,18 +173,21 @@ class MainHandler(webapp2.RequestHandler):
 
         now = datetime.datetime.now()
         # created = now.strftime("%Y-%m-%d %H:%M:%S")
-        insert_id = now.strftime("%Y%m%d%H%M%S") + uuid.uuid4().hex
-        insert_data = {
-            'kind': 'bigquery#tableDataInsertAllRequest',
-            'rows': [{'insertId': insert_id, 'json': result.as_bq()}]
-        }
-        bigquery = bq_auth()
-        response = bigquery.tabledata().insertAll(
-            projectId=PROJECT_NUMBER,
-            datasetId=DATASET_ID,
-            tableId=TABLE_ID,
-            body=insert_data
-        ).execute()
+        try:
+            insert_id = now.strftime("%Y%m%d%H%M%S") + uuid.uuid4().hex
+            insert_data = {
+                'kind': 'bigquery#tableDataInsertAllRequest',
+                'rows': [{'insertId': insert_id, 'json': result.as_bq()}]
+            }
+            bigquery = bq_auth()
+            response = bigquery.tabledata().insertAll(
+                projectId=PROJECT_NUMBER,
+                datasetId=DATASET_ID,
+                tableId=TABLE_ID,
+                body=insert_data
+            ).execute()
+        except:
+            logging.exception('big query error')
         self.render_response('templates/location.html', context)
         future.get_result()
 
