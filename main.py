@@ -142,6 +142,26 @@ class MainHandler(webapp2.RequestHandler):
         future.get_result()
 
 
+class DownloadHandler(webapp2.RequestHandler):
+
+    def get(self):
+        self.response.headers['Content-Type'] = 'application/csv'
+        writer = csv.writer(self.response.out)
+        writer.writerow([
+            'lat_origin', 'lng_origin',
+            'lat', 'lng',
+            'address',
+        ])
+        qry = GeoCodedPlace.query()
+        for obj in qry.iter():
+            origin = obj.origin.get()
+            writer.writerow([
+                origin.lat, origin.lng,
+                obj.lat, obj.lng,
+                obj.address.encode('utf-8'),
+            ])
+
 app = webapp2.WSGIApplication([
-    ('/', MainHandler)
-    ], debug=True)
+    ('/', MainHandler),
+    # ('/list.csv', DownloadHandler),
+], debug=True)
