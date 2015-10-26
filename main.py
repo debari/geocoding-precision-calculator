@@ -41,15 +41,6 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
 
-SCOPE = 'https://www.googleapis.com/auth/bigquery'
-
-
-def bq_auth():
-    credentials = AppAssertionCredentials(scope=SCOPE)
-    http = credentials.authorize(httplib2.Http())
-    bigquery = build('bigquery', 'v2', http=http)
-    return bigquery
-
 
 class GeoCoder(object):
     base = 'https://maps.googleapis.com/maps/api/geocode/json'
@@ -139,6 +130,53 @@ class GeoCodingResult(object):
         }
 
 
+class BqQuery(object):
+    scope = 'https://www.googleapis.com/auth/bigquery'
+    _bigquery = None
+
+    def __init__(self, project_id, dataset_id, table_id):
+        self.project_id = project_id
+        self.dataset_id = dataset_id
+        self.table_id = table_id
+
+    @classmethod
+    def bigquery(cls):
+        if cls._bigquery is None:
+            credentials = AppAssertionCredentials(scope=cls.scope)
+            http = credentials.authorize(httplib2.Http())
+            cls._bigquery = build('bigquery', 'v2', http=http)
+        return cls._bigquery
+
+    def insert_id(self):
+        return '{}{}'.format(
+            datetime.datetime.now().strftime("%Y%m%d%H%M%S"),
+            uuid.uuid4().hex
+        )
+
+    def iter_insert_data(self, data_list):
+        for data in data_list:
+            yield {
+                'insertId': self.insert_id(),
+                'json': data
+            }
+
+    def insert(self, data_list):
+        tabledata = self.bigquery().tabledata()
+        for insert_data in self.iter_insert_data(data_list):
+            try:
+                tabledata.insertAll(
+                    projectId=self.project_id,
+                    datasetId=self.dataset_id,
+                    tableId=self.table_id,
+                    body={
+                        'kind': 'bigquery#tableDataInsertAllRequest',
+                        'rows': [insert_data]
+                    }
+                ).execute()
+            except:
+                logging.exception('big query error')
+
+
 class MainHandler(webapp2.RequestHandler):
 
     def render_response(self, _template, context):
@@ -168,23 +206,9 @@ class MainHandler(webapp2.RequestHandler):
             'coded': coded
         }
 
-        now = datetime.datetime.now()
-        # created = now.strftime("%Y-%m-%d %H:%M:%S")
-        try:
-            insert_id = now.strftime("%Y%m%d%H%M%S") + uuid.uuid4().hex
-            insert_data = {
-                'kind': 'bigquery#tableDataInsertAllRequest',
-                'rows': [{'insertId': insert_id, 'json': result.as_bq()}]
-            }
-            bigquery = bq_auth()
-            response = bigquery.tabledata().insertAll(
-                projectId=PROJECT_ID,
-                datasetId=DATASET_ID,
-                tableId=TABLE_ID,
-                body=insert_data
-            ).execute()
-        except:
-            logging.exception('big query error')
+        bq = BqQuery(PROJECT_ID, DATASET_ID, TABLE_ID)
+        bq.insert([result.as_bq()])
+
         self.render_response('templates/location.html', context)
         future.get_result()
 
