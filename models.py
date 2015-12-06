@@ -23,6 +23,10 @@ class BaseModel(ndb.Model):
         kwargs.update({'version': cls.VERSION})
         return cls(**kwargs)
 
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
 
 class Place(BaseModel):
     VERSION = 1
@@ -44,3 +48,11 @@ class GeoCodedPlace(BaseModel):
     origin = ndb.KeyProperty(u'返還前座標データ', kind='Place')
     json = ndb.JsonProperty(u'変換時JSON')
     address = ndb.StringProperty(u'ジオコーディング住所')
+
+
+class PlaceSummary(BaseModel):
+    VERSION = 1
+    lat = ndb.FloatProperty(u'変換済み緯度')
+    lng = ndb.FloatProperty(u'変換済み経度')
+    distance = ndb.FloatProperty(u'平均誤差')
+    address = ndb.StringProperty(u'住所')
