@@ -1,0 +1,16 @@
+tml,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+#map {
+    height: 100%;
+}
+.success {
+    position: fixed;
+    top: 30px;
+    right: 10px;
+    background: #FFFFFF;
+    z-index: 100;
+}
