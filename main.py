@@ -18,8 +18,12 @@ import csv
 import webapp2
 import jinja2
 import os
+import json
 
-from bq import BqQuery
+from bq import (
+    BqQuery,
+    BqQueryResult,
+)
 from geocoding import (
     GeoCoder,
     GeoCodingResult,
@@ -27,6 +31,7 @@ from geocoding import (
 from models import (
     Place,
     GeoCodedPlace,
+    PlaceSummary,
 )
 
 PROJECT_ID = 'geocoding-precision-calculator'
@@ -94,7 +99,44 @@ class DownloadHandler(webapp2.RequestHandler):
                 obj.address.encode('utf-8'),
             ])
 
+
+class BigQuerySelectHandler(webapp2.RequestHandler):
+    def get(self):
+        bq = BqQuery(PROJECT_ID, DATASET_ID, TABLE_ID)
+        self.response.headers['Content-Type'] = 'application/json'
+        res = bq.query(u'''SELECT
+    address,
+    AVG(lat) as lat,
+    AVG(lng) as lng,
+    AVG(
+        SQRT(
+            POW(RADIANS(ABS(lat - lat_origin)) *
+            6335439.32708317 / POW(SQRT(1 - 0.00669438002301188 *
+            POW(SIN(RADIANS((lat + lat_origin)/2)), 2)), 3), 2)
+            +
+            POW(RADIANS(ABS(lng - lng_origin)) * 6378137.000 /
+            SQRT(1 - 0.00669438002301188 *
+            POW(SIN(RADIANS((lat + lat_origin)/2)),2)) *
+             COS(RADIANS((lat + lat_origin)/2)), 2)
+        )
+    ) AS distance
+FROM places.places
+group by address;''')
+        r = BqQueryResult(res)
+        for item in r.items():
+            ps = PlaceSummary\
+                .query(PlaceSummary.address == item['address'])\
+                .get()
+            if ps is None:
+                ps = PlaceSummary.create_instance(**item)
+            else:
+                ps.update(**item)
+            ps.put()
+        self.response.write(json.dumps(r.as_dict()))
+
+
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
+    ('/test', BigQuerySelectHandler),
     # ('/list.csv', DownloadHandler),
 ], debug=True)

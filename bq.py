@@ -1,5 +1,6 @@
 # coding: utf-8
 import datetime
+import json
 import uuid
 import logging
 import httplib2
@@ -8,7 +9,13 @@ from apiclient.discovery import build
 from oauth2client.appengine import AppAssertionCredentials
 
 
+class BqQueryError(Exception):
+    pass
+
+
 class BqQuery(object):
+    u'''BigQuery クエリクラス'''
+
     scope = 'https://www.googleapis.com/auth/bigquery'
     _bigquery = None
 
@@ -28,6 +35,10 @@ class BqQuery(object):
     @classmethod
     def tabledata(cls):
         return cls.bigquery().tabledata()
+
+    @classmethod
+    def jobs(cls):
+        return cls.bigquery().jobs()
 
     def insert_id(self):
         return '{}{}'.format(
@@ -78,3 +89,79 @@ class BqQuery(object):
             ).execute()
         except:
             logging.exception('big query error')
+
+    def query(self, query, timeout=10, dry_run=False, max_results=10):
+        data = {
+            'query': query,
+            'timeoutMs': timeout * 1000,
+            'dryRun': dry_run,
+            'maxResults': max_results,
+        }
+        jobs = self.jobs()
+        try:
+            response = jobs.query(
+                projectId=self.project_id, body=data
+            ).execute()
+        except:
+            logging.exception('big query error')
+        if not response.get('jobComplete'):
+            raise BqQueryError
+        return response
+
+
+class BqQueryResult(object):
+    u'''BiqQuery select文の結果整形のためのクラス。
+    TODO: もうちょっとなんとかする
+    '''
+
+    def __init__(self, response):
+        self.res = response
+        self._items = []
+
+    def schema(self):
+        return self.res.get('schema', {})
+
+    def fields(self):
+        return self.schema().get('fields', {})
+
+    def field_names(self):
+        return [f['name'] for f in self.fields()]
+
+    def rows(self):
+        return self.res.get('rows', [])
+
+    def totalRows(self):
+        return self.res.get('totalRows')
+
+    def items(self):
+        if not self._items:
+            for row in self.rows():
+                self._items.append(
+                    dict(self.zip(self.fields(), [r['v'] for r in row['f']]))
+                )
+        return self._items
+
+    def zip(self, fields, values):
+        ls = []
+        for field, value in zip(fields, values):
+            if field['type'] == u'FLOAT':
+                ls.append((field['name'], float(value)))
+            elif field['type'] == u'INTEGER':
+                ls.append((field['name'], int(value)))
+            else:
+                ls.append((field['name'], value))
+        return ls
+
+    def attribute(self):
+        return {
+            'total': int(self.totalRows()),
+            'count': len(self.items())
+        }
+
+    def as_dict(self):
+        return {
+            'result': {
+                'attribute': self.attribute(),
+                'items': self.items(),
+            }
+        }
