@@ -44,15 +44,18 @@ class GeoCoder(object):
 
 class GeoCodingResult(object):
 
-    def __init__(self, geocoder):
+    def __init__(self, geocoder, result=None):
         self.geocoder = geocoder
+        self._result = result
 
     def json(self):
         return self.geocoder.result()['results']
 
     def result(self):
         try:
-            return self.json()[0]
+            if self._result is None:
+                self._result = self.json()[0]
+            return self._result
         except KeyError:
             return {}
 
@@ -79,7 +82,7 @@ class GeoCodingResult(object):
             'address': self.address(),
             'lat': self.lat(),
             'lng': self.lng(),
-            'json': self.json(),
+            # 'json': self.json(),
         }
 
     def as_bq(self):
