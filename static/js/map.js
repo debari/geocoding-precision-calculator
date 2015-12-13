@@ -59,7 +59,7 @@ GeocodingPrecisionCalculator.prototype.post = function(result) {
         url: '/api/post',
         data: {
             lat: self.lat,
-            lng: self.lat,
+            lng: self.lng,
             json: JSON.stringify(result)
         }
     }).done(function(){
