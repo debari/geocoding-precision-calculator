@@ -32,7 +32,6 @@ GeocodingPrecisionCalculator.prototype._success = function(position) {
     }, function(results, status) {
         if (status === google.maps.GeocoderStatus.OK) {
             self.iw.setMap(null);
-            self.map.setCenter(results[0].geometry.location);
             self.iw.setContent(results[0].formatted_address);
             self.iw.setPosition(results[0].geometry.location);
             self.iw.setMap(self.map);
