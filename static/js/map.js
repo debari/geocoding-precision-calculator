@@ -10,8 +10,11 @@ GeocodingPrecisionCalculator.prototype.start = function() {
             function(position) {
                 self._success(position);
             },
-            self._error,
-            {enableHighAccuracy:true, timeout:6000, maximumAge:600000}
+            self._error, {
+                enableHighAccuracy: true,
+                timeout: 6000,
+                maximumAge: 600000
+            }
         );
     }
 }
@@ -24,17 +27,47 @@ GeocodingPrecisionCalculator.prototype._success = function(position) {
         lat: self.lat,
         lng: self.lng
     };
-    if(!self.me){
+    self.geocoder.geocode({
+        'location': self.ll
+    }, function(results, status) {
+        if (status === google.maps.GeocoderStatus.OK) {
+            self.iw.setMap(null);
+            self.map.setCenter(results[0].geometry.location);
+            self.iw.setContent(results[0].formatted_address);
+            self.iw.setPosition(results[0].geometry.location);
+            self.iw.setMap(self.map);
+            self.post(results[0]);
+        } else {
+            console.log('Geocode was not successful for the following reason: ' + status);
+        }
+    });
+    if (!self.me) {
         self.me = new google.maps.Marker({
             position: self.ll,
             icon: '/static/image/gloc.png',
             map: self.map
         });
-    }
-    else{
+    } else {
         self.me.setPosition(self.ll);
     }
     self.map.panTo(self.ll);
+}
+
+GeocodingPrecisionCalculator.prototype.post = function(result) {
+    var self = this;
+    $.ajax({
+        type: 'POST',
+        url: '/api/post',
+        data: {
+            lat: self.lat,
+            lng: self.lat,
+            json: JSON.stringify(result)
+        }
+    }).done(function(){
+        console.log('post');
+    }).fail(function(){
+        console.log('fail');
+    })
 }
 
 GeocodingPrecisionCalculator.prototype.stop = function() {
@@ -45,7 +78,7 @@ GeocodingPrecisionCalculator.prototype.stop = function() {
 }
 
 GeocodingPrecisionCalculator.prototype._error = function() {
-    alert('位置情報取れない');
+    console.log('位置情報取れない');
 }
 
 GeocodingPrecisionCalculator.prototype.initMap = function() {
@@ -56,7 +89,9 @@ GeocodingPrecisionCalculator.prototype.initMap = function() {
         },
         zoom: 16
     });
+    this.iw = new google.maps.InfoWindow();
     this.geocoder = new google.maps.Geocoder();
+    this.dm = new google.maps.DistanceMatrixService();
     this.start();
 }
 var gc = new GeocodingPrecisionCalculator();

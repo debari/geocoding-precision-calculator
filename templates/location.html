@@ -20,34 +20,9 @@
             z-index: 100;
         }
     </style>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?callback=initMap">
+    <script async defer src="https://maps.googleapis.com/maps/api/js?callback=gc.initMap">
     </script>
     <script>
-        var initMap = function() {
-            var map = new google.maps.Map(document.getElementById('map'), {
-                center: {
-                    lat: {{place.lat}},
-                    lng: {{place.lng}}
-                },
-                zoom: 18
-            });
-            var place = {
-                lat: {{place.lat}},
-                lng: {{place.lng}}
-            };
-            var coded = {
-                lat: {{coded.lat}},
-                lng: {{coded.lng}}
-            }
-            var marker1 = new google.maps.Marker({
-                position: place,
-                map: map
-            });
-            var marker2 = new google.maps.Marker({
-                position: coded,
-                map: map
-            });
-        };
     </script>
 </head>
 
